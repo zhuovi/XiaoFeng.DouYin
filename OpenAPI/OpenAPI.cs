@@ -473,7 +473,6 @@ namespace XiaoFeng.DouYin
             {
                 Method = HttpMethod.Get,
                 Address = Helper.API_DOMAIN + url,
-                ContentType = "application/json",
                 Headers = new Dictionary<string, string>
                 {
                     {"access-token",clientToken }
@@ -963,7 +962,6 @@ namespace XiaoFeng.DouYin
             {
                 Method = HttpMethod.Get,
                 Address = Helper.API_DOMAIN + url,
-                ContentType = "application/json",
                 Headers = new Dictionary<string, string>
                 {
                     {"access-token",clientToken }
