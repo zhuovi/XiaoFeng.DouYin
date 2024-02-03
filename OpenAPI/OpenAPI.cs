@@ -110,10 +110,10 @@ namespace XiaoFeng.DouYin
                     {"refresh_token",refreshToken },
                 }
             }.GetResponseAsync().ConfigureAwait(false);
-            if(result.StatusCode== System.Net.HttpStatusCode.OK)
+            if (result.StatusCode == System.Net.HttpStatusCode.OK)
             {
                 var resultModel = result.Html.JsonToObject<ResultModel<RefreshAccessTokenModel>>();
-                if(resultModel.Data.ErrorCode== AccessTokenErrorCode.SUCCESS)
+                if (resultModel.Data.ErrorCode == AccessTokenErrorCode.SUCCESS)
                 {
                     this.AccessToken.RefreshToken = resultModel.Data.RefreshToken;
                     this.AccessToken.RefreshExpiresIn = resultModel.Data.ExpiresIn;
@@ -150,7 +150,7 @@ namespace XiaoFeng.DouYin
             if (result.StatusCode == System.Net.HttpStatusCode.OK)
             {
                 var resultModel = result.Html.JsonToObject<ResultModel<AccessTokenModel>>();
-                if(resultModel.Data.ErrorCode== AccessTokenErrorCode.SUCCESS)
+                if (resultModel.Data.ErrorCode == AccessTokenErrorCode.SUCCESS)
                 {
                     this.ClientToken = resultModel.Data;
                 }
@@ -187,10 +187,10 @@ namespace XiaoFeng.DouYin
                 var resultModel = result.Html.JsonToObject<ResultModel<AccessTokenModel>>();
                 if (resultModel.Data.ErrorCode == AccessTokenErrorCode.SUCCESS)
                     this.AccessToken = resultModel.Data;
-                else if(resultModel.Data.ErrorCode== AccessTokenErrorCode.REFRESH_TOKEN_EXPIRED)
+                else if (resultModel.Data.ErrorCode == AccessTokenErrorCode.REFRESH_TOKEN_EXPIRED)
                 {
                     var refreshTokens = await this.RefreshRefreshAccessTokenAsync(this.AccessToken.RefreshToken).ConfigureAwait(false);
-                    if(refreshTokens.ErrorCode== AccessTokenErrorCode.SUCCESS)
+                    if (refreshTokens.ErrorCode == AccessTokenErrorCode.SUCCESS)
                     {
                         return await this.RefreshAccessTokenAsync(refreshTokens.RefreshToken).ConfigureAwait(false);
                     }
@@ -215,7 +215,7 @@ namespace XiaoFeng.DouYin
             {
                 Method = HttpMethod.Get,
                 Address = Helper.API_DOMAIN + url,
-                Headers=new Dictionary<string, string>
+                Headers = new Dictionary<string, string>
                 {
                     {"access-token",clientToken }
                 }
@@ -223,7 +223,7 @@ namespace XiaoFeng.DouYin
             if (result.StatusCode == System.Net.HttpStatusCode.OK)
             {
                 var resultModel = result.Html.JsonToObject<ResultModel<TicketModel>>();
-                if(resultModel.Data.ErrorCode== AccessTokenErrorCode.ACCESSTOKEN_EXPIERD)
+                if (resultModel.Data.ErrorCode == AccessTokenErrorCode.ACCESSTOKEN_EXPIERD)
                 {
                     var client = await this.CreateClientTokenAsync().ConfigureAwait(false);
                     return await this.GetOpenTicketAsync(client.AccessToken).ConfigureAwait(false);
@@ -260,7 +260,7 @@ namespace XiaoFeng.DouYin
             if (result.StatusCode == System.Net.HttpStatusCode.OK)
             {
                 var resultModel = result.Html.JsonToObject<ResultModel<EventStatusModel>>();
-                
+
                 return resultModel.Data;
             }
             else
@@ -275,7 +275,7 @@ namespace XiaoFeng.DouYin
         /// <param name="eventStatus">事件状态</param>
         /// <param name="clientToken">clientToken</param>
         /// <returns></returns>
-        public async Task<BaseDataModel> UpdateEventStatusAsync(List<EventStatus> eventStatus,string clientToken)
+        public async Task<BaseDataModel> UpdateEventStatusAsync(List<EventStatus> eventStatus, string clientToken)
         {
             var url = "/event/status/update/";
             var result = await new HttpRequest
@@ -287,7 +287,7 @@ namespace XiaoFeng.DouYin
                 {
                     {"access-token",clientToken }
                 },
-                BodyData=eventStatus.ToJson()
+                BodyData = eventStatus.ToJson()
             }.GetResponseAsync().ConfigureAwait(false);
             if (result.StatusCode == System.Net.HttpStatusCode.OK)
             {
@@ -350,7 +350,7 @@ namespace XiaoFeng.DouYin
         ///<para>路径：抖音开放平台控制台 > 应用详情 > 能力管理 > 用户权限 > 粉丝判断</para>
         ///<para>需要用户授权</para>
         /// </remarks>
-        public async Task<Boolean> FansCheck(string openId,string followerOpenId,AccessTokenModel token)
+        public async Task<Boolean> FansCheck(string openId, string followerOpenId, AccessTokenModel token)
         {
             var url = "fans/check/";
             var result = await new HttpRequest
@@ -365,10 +365,10 @@ namespace XiaoFeng.DouYin
                     {"open_id",openId }
                 }
             }.GetResponseAsync().ConfigureAwait(false);
-            if(result.StatusCode== System.Net.HttpStatusCode.OK)
+            if (result.StatusCode == System.Net.HttpStatusCode.OK)
             {
                 var model = result.Html.JsonToObject().ToDictionary();
-                if(model.TryGetValue("data",out var jsonValue))
+                if (model.TryGetValue("data", out var jsonValue))
                 {
                     if (jsonValue.ToDictionary().TryGetValue("is_follower", out var v))
                         return v.ToBoolean();
@@ -504,9 +504,9 @@ namespace XiaoFeng.DouYin
         /// <param name="defaultHashTag">追踪分享默认hashtag</param>
         /// <param name="linkParam">分享来源url附加参数（暂未开放）</param>
         /// <returns></returns>
-        public async Task<ShareModel> GetShareIdAsync(string clientToken,Boolean needCallback=true,string sourceStyleId="",string defaultHashTag="",string linkParam="")
+        public async Task<ShareModel> GetShareIdAsync(string clientToken, Boolean needCallback = true, string sourceStyleId = "", string defaultHashTag = "", string linkParam = "")
         {
-            var url = "/share-id/";
+            var url = $"/share-id/?need_callback={needCallback.ToString().ToLower()}&source_style_id={sourceStyleId}&default_hashtag={defaultHashTag}&link_param={linkParam}";
             var result = await new HttpRequest
             {
                 Method = HttpMethod.Get,
@@ -514,19 +514,20 @@ namespace XiaoFeng.DouYin
                 Headers = new Dictionary<string, string>
                 {
                     {"access-token",clientToken }
-                },
-                Data = new Dictionary<string, string>
-                {
-                    {"need_callback",needCallback.ToString().ToLower() },
-                    {"source_style_id",sourceStyleId },
-                    {"default_hashtag",defaultHashTag },
-                    {"link_param",linkParam }
                 }
             }.GetResponseAsync().ConfigureAwait(false);
             if (result.StatusCode == System.Net.HttpStatusCode.OK)
             {
                 var resultModel = result.Html.JsonToObject<ResultModel<ShareModel>>();
-
+                if (resultModel.Data.ErrorCode == AccessTokenErrorCode.ACCESSTOKEN_EXPIERD)
+                {
+                    var client = await this.CreateClientTokenAsync().ConfigureAwait(false);
+                    if (client.ErrorCode == AccessTokenErrorCode.SUCCESS)
+                    {
+                        this.ClientToken = client;
+                        return await this.GetShareIdAsync(client.AccessToken, needCallback, sourceStyleId, defaultHashTag, linkParam).ConfigureAwait(false);
+                    }
+                }
                 return resultModel.Data;
             }
             else
@@ -544,7 +545,7 @@ namespace XiaoFeng.DouYin
         /// <param name="page">分页游标, 第一页请求cursor是0, response中会返回下一页请求用到的cursor, 同时response还会返回has_more来表明是否有更多的数据。</param>
         /// <param name="limit">每页数量</param>
         /// <returns></returns>
-        public async Task<PoiModel> GetPoiAsync(string clientToken, string keyword, string city, int page,int limit)
+        public async Task<PoiModel> GetPoiAsync(string clientToken, string keyword, string city, int page, int limit)
         {
             var url = "/poi/search/keyword/";
             var result = await new HttpRequest
@@ -657,10 +658,10 @@ namespace XiaoFeng.DouYin
             if (result.StatusCode == System.Net.HttpStatusCode.OK)
             {
                 var resultModel = result.Html.JsonToObject<ResultModel<UserItemModel>>();
-                if(resultModel.Data.ErrorCode == AccessTokenErrorCode.ACCESSTOKEN_EXPIERD)
+                if (resultModel.Data.ErrorCode == AccessTokenErrorCode.ACCESSTOKEN_EXPIERD)
                 {
                     var refreshToken = await this.RefreshAccessTokenAsync(this.AccessToken.RefreshToken).ConfigureAwait(false);
-                    if(refreshToken.ErrorCode== AccessTokenErrorCode.SUCCESS)
+                    if (refreshToken.ErrorCode == AccessTokenErrorCode.SUCCESS)
                     {
                         return await this.GetUserItemAsync(refreshToken.AccessToken, refreshToken.OpenId, days).ConfigureAwait(false);
                     }
@@ -913,7 +914,7 @@ namespace XiaoFeng.DouYin
         /// <param name="itemId">item_id，仅能查询access_token对应用户上传的视频</param>
         /// <param name="days">数据范围，只支持近7/15/30天</param>
         /// <returns></returns>
-        public async Task<ItemLikeModel> GetItemLikeAsync(string accessToken, string openId, string itemId,string days)
+        public async Task<ItemLikeModel> GetItemLikeAsync(string accessToken, string openId, string itemId, string days)
         {
             var url = $"/data/external/item/like/?open_id={openId}&item_id={itemId.UrlEncode()}&date_type={days}";
             var result = await new HttpRequest
@@ -933,7 +934,7 @@ namespace XiaoFeng.DouYin
                     var refreshToken = await this.RefreshAccessTokenAsync(this.AccessToken.RefreshToken).ConfigureAwait(false);
                     if (refreshToken.ErrorCode == AccessTokenErrorCode.SUCCESS)
                     {
-                        return await this.GetItemLikeAsync(refreshToken.AccessToken, refreshToken.OpenId,itemId, days).ConfigureAwait(false);
+                        return await this.GetItemLikeAsync(refreshToken.AccessToken, refreshToken.OpenId, itemId, days).ConfigureAwait(false);
                     }
                 }
                 return resultModel.Data;
@@ -1085,10 +1086,10 @@ namespace XiaoFeng.DouYin
             if (result.StatusCode == System.Net.HttpStatusCode.OK)
             {
                 var resultModel = result.Html.JsonToObject<ResultModel<HotVideoModel>>();
-                if(resultModel.Data.ErrorCode == AccessTokenErrorCode.ACCESSTOKEN_EXPIERD)
+                if (resultModel.Data.ErrorCode == AccessTokenErrorCode.ACCESSTOKEN_EXPIERD)
                 {
                     var client = await this.CreateClientTokenAsync().ConfigureAwait(false);
-                    if(client.ErrorCode== AccessTokenErrorCode.SUCCESS)
+                    if (client.ErrorCode == AccessTokenErrorCode.SUCCESS)
                     {
                         return await this.GetHotVideoRankAsync(client.AccessToken).ConfigureAwait(false);
                     }

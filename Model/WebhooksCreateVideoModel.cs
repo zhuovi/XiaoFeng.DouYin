@@ -32,7 +32,12 @@ namespace XiaoFeng.DouYin.Model
 
         #region 属性
         /// <summary>
-        /// 创建的视频id
+        /// 真实视频ID
+        /// </summary>
+        [JsonElement("video_id")]
+        public string VideoId { get; set; }
+        /// <summary>
+        /// 加密视频ID
         /// </summary>
         [JsonElement("item_id")]
         public string ItemId { get; set; }
