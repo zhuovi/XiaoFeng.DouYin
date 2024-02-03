@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
+using XiaoFeng.DouYin.Enum;
 using XiaoFeng.DouYin.Internal;
 using XiaoFeng.DouYin.Model;
 using XiaoFeng.Http;
@@ -38,6 +39,18 @@ namespace XiaoFeng.DouYin
         /// OpenApi配置
         /// </summary>
         public OpenApiOptions Options { get; set; }
+        /// <summary>
+        /// AccessToken
+        /// </summary>
+        public AccessTokenModel AccessToken { get; set; }
+        /// <summary>
+        /// 客户端AccessToken
+        /// </summary>
+        public AccessTokenModel ClientToken { get; set; }
+        /// <summary>
+        /// 票据
+        /// </summary>
+        public TicketModel Ticket { get; set; }
         #endregion
 
         #region 方法
@@ -69,6 +82,7 @@ namespace XiaoFeng.DouYin
             if (result.StatusCode == System.Net.HttpStatusCode.OK)
             {
                 var resultModel = result.Html.JsonToObject<ResultModel<AccessTokenModel>>();
+                if (resultModel.Data.ErrorCode == Enum.AccessTokenErrorCode.SUCCESS) this.AccessToken = resultModel.Data;
                 return resultModel.Data;
             }
             else
@@ -99,6 +113,11 @@ namespace XiaoFeng.DouYin
             if(result.StatusCode== System.Net.HttpStatusCode.OK)
             {
                 var resultModel = result.Html.JsonToObject<ResultModel<RefreshAccessTokenModel>>();
+                if(resultModel.Data.ErrorCode== AccessTokenErrorCode.SUCCESS)
+                {
+                    this.AccessToken.RefreshToken = resultModel.Data.RefreshToken;
+                    this.AccessToken.RefreshExpiresIn = resultModel.Data.ExpiresIn;
+                }
                 return await Task.FromResult(resultModel.Data);
             }
             else
@@ -131,6 +150,10 @@ namespace XiaoFeng.DouYin
             if (result.StatusCode == System.Net.HttpStatusCode.OK)
             {
                 var resultModel = result.Html.JsonToObject<ResultModel<AccessTokenModel>>();
+                if(resultModel.Data.ErrorCode== AccessTokenErrorCode.SUCCESS)
+                {
+                    this.ClientToken = resultModel.Data;
+                }
                 return resultModel.Data;
             }
             else
@@ -162,6 +185,16 @@ namespace XiaoFeng.DouYin
             if (result.StatusCode == System.Net.HttpStatusCode.OK)
             {
                 var resultModel = result.Html.JsonToObject<ResultModel<AccessTokenModel>>();
+                if (resultModel.Data.ErrorCode == AccessTokenErrorCode.SUCCESS)
+                    this.AccessToken = resultModel.Data;
+                else if(resultModel.Data.ErrorCode== AccessTokenErrorCode.REFRESH_TOKEN_EXPIRED)
+                {
+                    var refreshTokens = await this.RefreshRefreshAccessTokenAsync(this.AccessToken.RefreshToken).ConfigureAwait(false);
+                    if(refreshTokens.ErrorCode== AccessTokenErrorCode.SUCCESS)
+                    {
+                        return await this.RefreshAccessTokenAsync(refreshTokens.RefreshToken).ConfigureAwait(false);
+                    }
+                }
                 return resultModel.Data;
             }
             else
@@ -190,6 +223,11 @@ namespace XiaoFeng.DouYin
             if (result.StatusCode == System.Net.HttpStatusCode.OK)
             {
                 var resultModel = result.Html.JsonToObject<ResultModel<TicketModel>>();
+                if(resultModel.Data.ErrorCode== AccessTokenErrorCode.ACCESSTOKEN_EXPIERD)
+                {
+                    var client = await this.CreateClientTokenAsync().ConfigureAwait(false);
+                    return await this.GetOpenTicketAsync(client.AccessToken).ConfigureAwait(false);
+                }
                 return resultModel.Data;
             }
             else
@@ -619,7 +657,14 @@ namespace XiaoFeng.DouYin
             if (result.StatusCode == System.Net.HttpStatusCode.OK)
             {
                 var resultModel = result.Html.JsonToObject<ResultModel<UserItemModel>>();
-
+                if(resultModel.Data.ErrorCode == AccessTokenErrorCode.ACCESSTOKEN_EXPIERD)
+                {
+                    var refreshToken = await this.RefreshAccessTokenAsync(this.AccessToken.RefreshToken).ConfigureAwait(false);
+                    if(refreshToken.ErrorCode== AccessTokenErrorCode.SUCCESS)
+                    {
+                        return await this.GetUserItemAsync(refreshToken.AccessToken, refreshToken.OpenId, days).ConfigureAwait(false);
+                    }
+                }
                 return resultModel.Data;
             }
             else
@@ -650,7 +695,14 @@ namespace XiaoFeng.DouYin
             if (result.StatusCode == System.Net.HttpStatusCode.OK)
             {
                 var resultModel = result.Html.JsonToObject<ResultModel<UserFansModel>>();
-
+                if (resultModel.Data.ErrorCode == AccessTokenErrorCode.ACCESSTOKEN_EXPIERD)
+                {
+                    var refreshToken = await this.RefreshAccessTokenAsync(this.AccessToken.RefreshToken).ConfigureAwait(false);
+                    if (refreshToken.ErrorCode == AccessTokenErrorCode.SUCCESS)
+                    {
+                        return await this.GetUserFansAsync(refreshToken.AccessToken, refreshToken.OpenId, days).ConfigureAwait(false);
+                    }
+                }
                 return resultModel.Data;
             }
             else
@@ -681,7 +733,14 @@ namespace XiaoFeng.DouYin
             if (result.StatusCode == System.Net.HttpStatusCode.OK)
             {
                 var resultModel = result.Html.JsonToObject<ResultModel<UserLikeModel>>();
-
+                if (resultModel.Data.ErrorCode == AccessTokenErrorCode.ACCESSTOKEN_EXPIERD)
+                {
+                    var refreshToken = await this.RefreshAccessTokenAsync(this.AccessToken.RefreshToken).ConfigureAwait(false);
+                    if (refreshToken.ErrorCode == AccessTokenErrorCode.SUCCESS)
+                    {
+                        return await this.GetUserLikeAsync(refreshToken.AccessToken, refreshToken.OpenId, days).ConfigureAwait(false);
+                    }
+                }
                 return resultModel.Data;
             }
             else
@@ -712,7 +771,14 @@ namespace XiaoFeng.DouYin
             if (result.StatusCode == System.Net.HttpStatusCode.OK)
             {
                 var resultModel = result.Html.JsonToObject<ResultModel<UserCommentModel>>();
-
+                if (resultModel.Data.ErrorCode == AccessTokenErrorCode.ACCESSTOKEN_EXPIERD)
+                {
+                    var refreshToken = await this.RefreshAccessTokenAsync(this.AccessToken.RefreshToken).ConfigureAwait(false);
+                    if (refreshToken.ErrorCode == AccessTokenErrorCode.SUCCESS)
+                    {
+                        return await this.GetUserCommentAsync(refreshToken.AccessToken, refreshToken.OpenId, days).ConfigureAwait(false);
+                    }
+                }
                 return resultModel.Data;
             }
             else
@@ -743,7 +809,14 @@ namespace XiaoFeng.DouYin
             if (result.StatusCode == System.Net.HttpStatusCode.OK)
             {
                 var resultModel = result.Html.JsonToObject<ResultModel<UserShareModel>>();
-
+                if (resultModel.Data.ErrorCode == AccessTokenErrorCode.ACCESSTOKEN_EXPIERD)
+                {
+                    var refreshToken = await this.RefreshAccessTokenAsync(this.AccessToken.RefreshToken).ConfigureAwait(false);
+                    if (refreshToken.ErrorCode == AccessTokenErrorCode.SUCCESS)
+                    {
+                        return await this.GetUserShareAsync(refreshToken.AccessToken, refreshToken.OpenId, days).ConfigureAwait(false);
+                    }
+                }
                 return resultModel.Data;
             }
             else
@@ -774,7 +847,14 @@ namespace XiaoFeng.DouYin
             if (result.StatusCode == System.Net.HttpStatusCode.OK)
             {
                 var resultModel = result.Html.JsonToObject<ResultModel<UserProfileModel>>();
-
+                if (resultModel.Data.ErrorCode == AccessTokenErrorCode.ACCESSTOKEN_EXPIERD)
+                {
+                    var refreshToken = await this.RefreshAccessTokenAsync(this.AccessToken.RefreshToken).ConfigureAwait(false);
+                    if (refreshToken.ErrorCode == AccessTokenErrorCode.SUCCESS)
+                    {
+                        return await this.GetUserProfileAsync(refreshToken.AccessToken, refreshToken.OpenId, days).ConfigureAwait(false);
+                    }
+                }
                 return resultModel.Data;
             }
             else
@@ -809,7 +889,14 @@ namespace XiaoFeng.DouYin
             if (result.StatusCode == System.Net.HttpStatusCode.OK)
             {
                 var resultModel = result.Html.JsonToObject<ResultModel<ItemBaseModel>>();
-
+                if (resultModel.Data.ErrorCode == AccessTokenErrorCode.ACCESSTOKEN_EXPIERD)
+                {
+                    var refreshToken = await this.RefreshAccessTokenAsync(this.AccessToken.RefreshToken).ConfigureAwait(false);
+                    if (refreshToken.ErrorCode == AccessTokenErrorCode.SUCCESS)
+                    {
+                        return await this.GetItemBaseAsync(refreshToken.AccessToken, refreshToken.OpenId, itemId).ConfigureAwait(false);
+                    }
+                }
                 return resultModel.Data;
             }
             else
@@ -841,7 +928,14 @@ namespace XiaoFeng.DouYin
             if (result.StatusCode == System.Net.HttpStatusCode.OK)
             {
                 var resultModel = result.Html.JsonToObject<ResultModel<ItemLikeModel>>();
-
+                if (resultModel.Data.ErrorCode == AccessTokenErrorCode.ACCESSTOKEN_EXPIERD)
+                {
+                    var refreshToken = await this.RefreshAccessTokenAsync(this.AccessToken.RefreshToken).ConfigureAwait(false);
+                    if (refreshToken.ErrorCode == AccessTokenErrorCode.SUCCESS)
+                    {
+                        return await this.GetItemLikeAsync(refreshToken.AccessToken, refreshToken.OpenId,itemId, days).ConfigureAwait(false);
+                    }
+                }
                 return resultModel.Data;
             }
             else
@@ -858,7 +952,7 @@ namespace XiaoFeng.DouYin
         /// <param name="itemId">item_id，仅能查询access_token对应用户上传的视频</param>
         /// <param name="days">数据范围，只支持近7/15/30天</param>
         /// <returns></returns>
-        public async Task<ItemCommentModel> GetCommentLikeAsync(string accessToken, string openId, string itemId, string days)
+        public async Task<ItemCommentModel> GetItemCommentAsync(string accessToken, string openId, string itemId, string days)
         {
             var url = $"/data/external/item/comment/?open_id={openId}&item_id={itemId.UrlEncode()}&date_type={days}";
             var result = await new HttpRequest
@@ -873,7 +967,14 @@ namespace XiaoFeng.DouYin
             if (result.StatusCode == System.Net.HttpStatusCode.OK)
             {
                 var resultModel = result.Html.JsonToObject<ResultModel<ItemCommentModel>>();
-
+                if (resultModel.Data.ErrorCode == AccessTokenErrorCode.ACCESSTOKEN_EXPIERD)
+                {
+                    var refreshToken = await this.RefreshAccessTokenAsync(this.AccessToken.RefreshToken).ConfigureAwait(false);
+                    if (refreshToken.ErrorCode == AccessTokenErrorCode.SUCCESS)
+                    {
+                        return await this.GetItemCommentAsync(refreshToken.AccessToken, refreshToken.OpenId, itemId, days).ConfigureAwait(false);
+                    }
+                }
                 return resultModel.Data;
             }
             else
@@ -905,7 +1006,14 @@ namespace XiaoFeng.DouYin
             if (result.StatusCode == System.Net.HttpStatusCode.OK)
             {
                 var resultModel = result.Html.JsonToObject<ResultModel<ItemPlayModel>>();
-
+                if (resultModel.Data.ErrorCode == AccessTokenErrorCode.ACCESSTOKEN_EXPIERD)
+                {
+                    var refreshToken = await this.RefreshAccessTokenAsync(this.AccessToken.RefreshToken).ConfigureAwait(false);
+                    if (refreshToken.ErrorCode == AccessTokenErrorCode.SUCCESS)
+                    {
+                        return await this.GetItemPlayAsync(refreshToken.AccessToken, refreshToken.OpenId, itemId, days).ConfigureAwait(false);
+                    }
+                }
                 return resultModel.Data;
             }
             else
@@ -937,7 +1045,14 @@ namespace XiaoFeng.DouYin
             if (result.StatusCode == System.Net.HttpStatusCode.OK)
             {
                 var resultModel = result.Html.JsonToObject<ResultModel<ItemShareModel>>();
-
+                if (resultModel.Data.ErrorCode == AccessTokenErrorCode.ACCESSTOKEN_EXPIERD)
+                {
+                    var refreshToken = await this.RefreshAccessTokenAsync(this.AccessToken.RefreshToken).ConfigureAwait(false);
+                    if (refreshToken.ErrorCode == AccessTokenErrorCode.SUCCESS)
+                    {
+                        return await this.GetItemShareAsync(refreshToken.AccessToken, refreshToken.OpenId, itemId, days).ConfigureAwait(false);
+                    }
+                }
                 return resultModel.Data;
             }
             else
@@ -970,7 +1085,14 @@ namespace XiaoFeng.DouYin
             if (result.StatusCode == System.Net.HttpStatusCode.OK)
             {
                 var resultModel = result.Html.JsonToObject<ResultModel<HotVideoModel>>();
-
+                if(resultModel.Data.ErrorCode == AccessTokenErrorCode.ACCESSTOKEN_EXPIERD)
+                {
+                    var client = await this.CreateClientTokenAsync().ConfigureAwait(false);
+                    if(client.ErrorCode== AccessTokenErrorCode.SUCCESS)
+                    {
+                        return await this.GetHotVideoRankAsync(client.AccessToken).ConfigureAwait(false);
+                    }
+                }
                 return resultModel.Data;
             }
             else
