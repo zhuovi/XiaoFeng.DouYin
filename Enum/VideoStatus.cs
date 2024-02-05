@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Text;
 
 /****************************************************************
@@ -17,6 +18,7 @@ namespace XiaoFeng.DouYin.Enum
     /// <summary>
     /// 视频状态
     /// </summary>
+    [Description("抖音视频状态")]
     public enum VideoStatus
     {
         /// <summary>

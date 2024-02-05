@@ -31,7 +31,7 @@ namespace XiaoFeng.DouYin.Enum
     /// <summary>
     /// AccessToken 错误码
     /// </summary>
-    [Description("Douyin AccessToken 错误码")]
+    [Description("抖音状态码")]
     public enum AccessTokenErrorCode
     {
         /// <summary>
