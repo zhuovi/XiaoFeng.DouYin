@@ -286,13 +286,13 @@ namespace XiaoFeng.DouYin
         /// <summary>
         /// 获取用户公开信息
         /// </summary>
-        /// <param name="token">Token模型 调用 /oauth/access_token/ 生成的 token，此 token 需要用户授权</param>
+        /// <param name="accessToken">Token模型 调用 /oauth/access_token/ 生成的 token，此 token 需要用户授权</param>
         /// <returns></returns>
         /// <remarks><para>需要申请权限。</para>
         ///<para>路径：抖音开放平台控制台 > 应用详情 > 能力管理 > 用户权限 > 授权登录与用户基础信息</para>
         ///<para>需要用户授权</para>
         ///</remarks>
-        public async Task<UserInfoModel> GetUserInfoAsync(AccessTokenModel token)
+        public async Task<UserInfoModel> GetUserInfoAsync(AccessTokenModel accessToken)
         {
             return await ExecuteAccessTokenAsync(new HttpRequest
             {
@@ -301,8 +301,8 @@ namespace XiaoFeng.DouYin
                 ContentType = "application/x-www-form-urlencoded",
                 Data = new Dictionary<string, string>
                 {
-                    {"access_token",token.AccessToken },
-                    {"open_id",token.OpenId }
+                    {"access_token",accessToken.AccessToken },
+                    {"open_id",accessToken.OpenId }
                 }
             }, async token =>
             {
@@ -315,7 +315,7 @@ namespace XiaoFeng.DouYin
         /// <summary>
         /// 粉丝判断
         /// </summary>
-        /// <param name="token">调用/oauth/access_token/生成，需要用户授权。</param>
+        /// <param name="accessToken">调用/oauth/access_token/生成，需要用户授权。</param>
         /// <param name="followerOpenId">目标粉丝用户的 open_id。</param>
         /// <returns></returns>
         /// <remarks>
@@ -323,7 +323,7 @@ namespace XiaoFeng.DouYin
         ///<para>路径：抖音开放平台控制台 > 应用详情 > 能力管理 > 用户权限 > 粉丝判断</para>
         ///<para>需要用户授权</para>
         /// </remarks>
-        public async Task<FansCheckModel> FansCheckAsync(AccessTokenModel token, string followerOpenId)
+        public async Task<FansCheckModel> FansCheckAsync(AccessTokenModel accessToken, string followerOpenId)
         {
             return await this.ExecuteAccessTokenAsync(new HttpRequest
             {
@@ -332,9 +332,9 @@ namespace XiaoFeng.DouYin
                 Method = HttpMethod.Post,
                 Data = new Dictionary<string, string>
                 {
-                    {"access-token", token.AccessToken},
+                    {"access-token", accessToken.AccessToken},
                     {"follower_open_id",followerOpenId },
-                    {"open_id",token.OpenId }
+                    {"open_id",accessToken.OpenId }
                 }
             }, async token =>
             {
