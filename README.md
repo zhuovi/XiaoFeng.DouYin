@@ -24,7 +24,7 @@ Nuget：XiaoFeng.DouYin
 
 ## XiaoFeng.DouYin
 
-XiaoFeng.DouYin generator with [XiaoFeng](https://github.com/zhuovi/XiaoFeng.DouYin).
+XiaoFeng.DouYin generator with [XiaoFeng.DouYin](https://github.com/zhuovi/XiaoFeng.DouYin).
 
 ## Install
 
@@ -61,10 +61,10 @@ Script & Interactive
 Cake
 
 ```
-// Install XiaoFeng as a Cake Addin
+// Install XiaoFeng.DouYin as a Cake Addin
 #addin nuget:?package=XiaoFeng.DouYin&version=1.0.0
 
-// Install XiaoFeng as a Cake Tool
+// Install XiaoFeng.DouYin as a Cake Tool
 #tool nuget:?package=XiaoFeng.DouYin&version=1.0.0
 ```
 
