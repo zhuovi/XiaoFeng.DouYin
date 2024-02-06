@@ -24,7 +24,7 @@ Nuget：XiaoFeng.DouYin
 
 ## XiaoFeng.DouYin
 
-XiaoFeng generator with [XiaoFeng](https://github.com/zhuovi/XiaoFeng.DouYin).
+XiaoFeng.DouYin generator with [XiaoFeng](https://github.com/zhuovi/XiaoFeng.DouYin).
 
 ## Install
 
