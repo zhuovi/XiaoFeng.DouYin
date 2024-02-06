@@ -24,7 +24,7 @@ namespace XiaoFeng.DouYin.Internal
         /// <summary>
         /// API域名
         /// </summary>
-        public const string API_DOMAIN = "https://open.douyin.com/";
+        public const string API_DOMAIN = "https://open.douyin.com";
         #endregion
 
         #region 方法

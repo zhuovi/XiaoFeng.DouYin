@@ -27,7 +27,7 @@
 		<AssemblyOriginatorKeyFile>XiaoFeng.snk</AssemblyOriginatorKeyFile>
 		<PackageIcon>x.png</PackageIcon>
 		<PackageTags>XiaoFeng;FAYELF;DouYin;</PackageTags>
-		<PackageReleaseNotes>发行第一个版本</PackageReleaseNotes>
+		<PackageReleaseNotes>简化调用流程</PackageReleaseNotes>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageLicenseFile>LICENSE</PackageLicenseFile>
 		<DelaySign>False</DelaySign>
@@ -39,7 +39,7 @@
 		<None Include="x.png" Pack="true" PackagePath="\" />
 	</ItemGroup>
 	<ItemGroup>
-	  <PackageReference Include="XiaoFeng" Version="5.0.0" />
+	  <!--<PackageReference Include="XiaoFeng" Version="5.0.0" />-->
 	</ItemGroup>
-	<!--<Import Project="E://Work/XiaoFeng.targets"/>-->
+	<Import Project="E://Work/XiaoFeng.targets"/>
 </Project>

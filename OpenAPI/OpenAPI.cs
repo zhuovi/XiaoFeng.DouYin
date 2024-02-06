@@ -46,11 +46,15 @@ namespace XiaoFeng.DouYin
         /// <summary>
         /// 客户端AccessToken
         /// </summary>
-        public AccessTokenModel ClientToken { get; set; }
+        public ClientTokenModel ClientToken { get; set; }
         /// <summary>
         /// 票据
         /// </summary>
         public TicketModel Ticket { get; set; }
+        /// <summary>
+        /// Token改变事件
+        /// </summary>
+        public Action<AccessTokenModel, ClientTokenModel, TicketModel> TokenChange { get; set; }
         #endregion
 
         #region 方法
@@ -65,12 +69,11 @@ namespace XiaoFeng.DouYin
         /// <returns></returns>
         public async Task<AccessTokenModel> GetAccessTokenAsync(string code)
         {
-            var url = "/oauth/access_token/";
             var result = await new HttpRequest
             {
                 ContentType = "application/json",
                 Method = "POST",
-                Address = Helper.API_DOMAIN + url,
+                Address = $"{Helper.API_DOMAIN}/oauth/access_token/",
                 Data = new Dictionary<string, string>
                 {
                     {"client_key",this.Options.ClientKey },
@@ -98,12 +101,11 @@ namespace XiaoFeng.DouYin
         /// <returns></returns>
         public async Task<RefreshAccessTokenModel> RefreshRefreshAccessTokenAsync(string refreshToken)
         {
-            var url = "oauth/renew_refresh_token/";
             var result = await new HttpRequest
             {
                 Method = "POST",
                 ContentType = "application/x-www-form-urlencoded",
-                Address = Helper.API_DOMAIN + url,
+                Address = $"{Helper.API_DOMAIN}/oauth/renew_refresh_token/",
                 Data = new Dictionary<string, string>
                 {
                     {"client_key",this.Options.ClientKey },
@@ -132,13 +134,12 @@ namespace XiaoFeng.DouYin
         /// 生成 client_token
         /// </summary>
         /// <returns></returns>
-        public async Task<AccessTokenModel> CreateClientTokenAsync()
+        public async Task<ClientTokenModel> CreateClientTokenAsync()
         {
-            var url = "oauth/client_token/";
             var result = await new HttpRequest
             {
                 Method = HttpMethod.Post,
-                Address = Helper.API_DOMAIN + url,
+                Address = $"{Helper.API_DOMAIN}/oauth/client_token/",
                 ContentType = "application/json",
                 Data = new Dictionary<string, string>
                 {
@@ -149,7 +150,7 @@ namespace XiaoFeng.DouYin
             }.GetResponseAsync().ConfigureAwait(false);
             if (result.StatusCode == System.Net.HttpStatusCode.OK)
             {
-                var resultModel = result.Html.JsonToObject<ResultModel<AccessTokenModel>>();
+                var resultModel = result.Html.JsonToObject<ResultModel<ClientTokenModel>>();
                 if (resultModel.Data.ErrorCode == AccessTokenErrorCode.SUCCESS)
                 {
                     this.ClientToken = resultModel.Data;
@@ -157,7 +158,7 @@ namespace XiaoFeng.DouYin
                 return resultModel.Data;
             }
             else
-                return await Task.FromResult(new AccessTokenModel(Enum.AccessTokenErrorCode.SYSTEM_ERROR, "接口请求不通"));
+                return await Task.FromResult(new ClientTokenModel(Enum.AccessTokenErrorCode.SYSTEM_ERROR, "接口请求不通"));
         }
         #endregion
 
@@ -169,11 +170,10 @@ namespace XiaoFeng.DouYin
         /// <returns></returns>
         public async Task<AccessTokenModel> RefreshAccessTokenAsync(string refreshToken)
         {
-            var url = "oauth/refresh_token/";
             var result = await new HttpRequest
             {
                 Method = HttpMethod.Post,
-                Address = Helper.API_DOMAIN + url,
+                Address = $"{Helper.API_DOMAIN}/oauth/refresh_token/",
                 ContentType = "application/json",
                 Data = new Dictionary<string, string>
                 {
@@ -210,28 +210,18 @@ namespace XiaoFeng.DouYin
         /// <returns></returns>
         public async Task<TicketModel> GetOpenTicketAsync(string clientToken)
         {
-            var url = "/open/getticket/";
-            var result = await new HttpRequest
+            return await this.ExecuteClientTokenAsync(new HttpRequest
             {
                 Method = HttpMethod.Get,
-                Address = Helper.API_DOMAIN + url,
+                Address = $"{Helper.API_DOMAIN}/open/getticket/",
                 Headers = new Dictionary<string, string>
                 {
                     {"access-token",clientToken }
                 }
-            }.GetResponseAsync().ConfigureAwait(false);
-            if (result.StatusCode == System.Net.HttpStatusCode.OK)
+            }, async token =>
             {
-                var resultModel = result.Html.JsonToObject<ResultModel<TicketModel>>();
-                if (resultModel.Data.ErrorCode == AccessTokenErrorCode.ACCESSTOKEN_EXPIERD)
-                {
-                    var client = await this.CreateClientTokenAsync().ConfigureAwait(false);
-                    return await this.GetOpenTicketAsync(client.AccessToken).ConfigureAwait(false);
-                }
-                return resultModel.Data;
-            }
-            else
-                return await Task.FromResult(new TicketModel(Enum.AccessTokenErrorCode.SYSTEM_ERROR, "接口请求不通"));
+                return await this.GetOpenTicketAsync(token.AccessToken).ConfigureAwait(false);
+            });
         }
         #endregion
 
@@ -247,24 +237,18 @@ namespace XiaoFeng.DouYin
         /// <returns></returns>
         public async Task<EventStatusModel> GetEventStatusAsync(string clientToken)
         {
-            var url = "/event/status/list/";
-            var result = await new HttpRequest
+            return await this.ExecuteClientTokenAsync(new HttpRequest
             {
                 Method = HttpMethod.Get,
-                Address = Helper.API_DOMAIN + url,
+                Address = $"{Helper.API_DOMAIN}/event/status/list/",
                 Headers = new Dictionary<string, string>
                 {
                     {"access-token",clientToken }
                 }
-            }.GetResponseAsync().ConfigureAwait(false);
-            if (result.StatusCode == System.Net.HttpStatusCode.OK)
+            }, async token =>
             {
-                var resultModel = result.Html.JsonToObject<ResultModel<EventStatusModel>>();
-
-                return resultModel.Data;
-            }
-            else
-                return await Task.FromResult(new EventStatusModel(Enum.AccessTokenErrorCode.SYSTEM_ERROR, "接口请求不通"));
+                return await this.GetEventStatusAsync(token.AccessToken).ConfigureAwait(false);
+            });
         }
         #endregion
 
@@ -272,30 +256,25 @@ namespace XiaoFeng.DouYin
         /// <summary>
         /// 更新事件状态
         /// </summary>
-        /// <param name="eventStatus">事件状态</param>
         /// <param name="clientToken">clientToken</param>
+        /// <param name="eventStatus">事件状态</param>
         /// <returns></returns>
-        public async Task<BaseDataModel> UpdateEventStatusAsync(List<EventStatus> eventStatus, string clientToken)
+        public async Task<BaseDataModel> UpdateEventStatusAsync(string clientToken, List<EventStatus> eventStatus)
         {
-            var url = "/event/status/update/";
-            var result = await new HttpRequest
+            return await ExecuteClientTokenAsync(new HttpRequest
             {
                 Method = HttpMethod.Post,
-                Address = Helper.API_DOMAIN + url,
+                Address = $"{Helper.API_DOMAIN}/event/status/update/",
                 ContentType = "application/json",
                 Headers = new Dictionary<string, string>
                 {
                     {"access-token",clientToken }
                 },
                 BodyData = eventStatus.ToJson()
-            }.GetResponseAsync().ConfigureAwait(false);
-            if (result.StatusCode == System.Net.HttpStatusCode.OK)
+            }, async token =>
             {
-                var resultModel = result.Html.JsonToObject<ResultModel<BaseDataModel>>();
-                return resultModel.Data;
-            }
-            else
-                return await Task.FromResult(new BaseDataModel(Enum.AccessTokenErrorCode.SYSTEM_ERROR, "接口请求不通"));
+                return await this.UpdateEventStatusAsync(clientToken, eventStatus).ConfigureAwait(false);
+            });
         }
         #endregion
 
@@ -315,25 +294,20 @@ namespace XiaoFeng.DouYin
         ///</remarks>
         public async Task<UserInfoModel> GetUserInfoAsync(AccessTokenModel token)
         {
-            var url = "oauth/userinfo/";
-            var result = await new HttpRequest
+            return await ExecuteAccessTokenAsync(new HttpRequest
             {
-                ContentType = "application/x-www-form-urlencoded",
                 Method = HttpMethod.Post,
-                Address = Helper.API_DOMAIN + url,
+                Address = $"{Helper.API_DOMAIN}/oauth/userinfo/",
+                ContentType = "application/x-www-form-urlencoded",
                 Data = new Dictionary<string, string>
                 {
                     {"access_token",token.AccessToken },
                     {"open_id",token.OpenId }
                 }
-            }.GetResponseAsync().ConfigureAwait(false);
-            if (result.StatusCode == System.Net.HttpStatusCode.OK)
+            }, async token =>
             {
-                var resultModel = result.Html.JsonToObject<ResultModel<UserInfoModel>>();
-                resultModel.Data.Mobile = resultModel.Data.GetMobile(this.Options.ClientSecret);
-                return resultModel.Data;
-            }
-            return await Task.FromResult((UserInfoModel)UserInfoModel.Create(Enum.AccessTokenErrorCode.SYSTEM_ERROR, "接口请求不通"));
+                return await this.GetUserInfoAsync(token).ConfigureAwait(false);
+            });
         }
         #endregion
 
@@ -341,40 +315,31 @@ namespace XiaoFeng.DouYin
         /// <summary>
         /// 粉丝判断
         /// </summary>
-        /// <param name="openId">通过 /oauth/access_token/ 获取，用户唯一标志。</param>
-        /// <param name="followerOpenId">目标粉丝用户的 open_id。</param>
         /// <param name="token">调用/oauth/access_token/生成，需要用户授权。</param>
+        /// <param name="followerOpenId">目标粉丝用户的 open_id。</param>
         /// <returns></returns>
         /// <remarks>
         /// <para>需要申请权限。</para>
         ///<para>路径：抖音开放平台控制台 > 应用详情 > 能力管理 > 用户权限 > 粉丝判断</para>
         ///<para>需要用户授权</para>
         /// </remarks>
-        public async Task<Boolean> FansCheck(string openId, string followerOpenId, AccessTokenModel token)
+        public async Task<FansCheckModel> FansCheckAsync(AccessTokenModel token, string followerOpenId)
         {
-            var url = "fans/check/";
-            var result = await new HttpRequest
+            return await this.ExecuteAccessTokenAsync(new HttpRequest
             {
                 ContentType = "application/json",
-                Address = Helper.API_DOMAIN + url,
+                Address = $"{Helper.API_DOMAIN}/fans/check/",
                 Method = HttpMethod.Post,
                 Data = new Dictionary<string, string>
                 {
                     {"access-token", token.AccessToken},
                     {"follower_open_id",followerOpenId },
-                    {"open_id",openId }
+                    {"open_id",token.OpenId }
                 }
-            }.GetResponseAsync().ConfigureAwait(false);
-            if (result.StatusCode == System.Net.HttpStatusCode.OK)
+            }, async token =>
             {
-                var model = result.Html.JsonToObject().ToDictionary();
-                if (model.TryGetValue("data", out var jsonValue))
-                {
-                    if (jsonValue.ToDictionary().TryGetValue("is_follower", out var v))
-                        return v.ToBoolean();
-                }
-            }
-            return await Task.FromResult(false);
+                return await this.FansCheckAsync(token, followerOpenId).ConfigureAwait(false);
+            });
         }
         #endregion
 
@@ -423,36 +388,30 @@ namespace XiaoFeng.DouYin
         /// 查询授权帐号视频列表
         /// </summary>
         /// <param name="accessToken">accessToken</param>
-        /// <param name="openId">openId</param>
+        /// <param name="openId">openid</param>
         /// <param name="page">页数</param>
         /// <param name="limit">每条多少条</param>
         /// <returns></returns>
-        public async Task<VideoModel> GetVideoAsync(string accessToken, string openId, int page, int limit)
+        public async Task<VideoModel> GetVideoListAsync(string accessToken, string openId, int page, int limit)
         {
-            var url = "/api/douyin/v1/video/video_list/";
-            var result = await new HttpRequest
+            return await this.ExecuteAccessTokenAsync(new HttpRequest
             {
                 Method = HttpMethod.Get,
-                Address = Helper.API_DOMAIN + url,
+                Address = $"{Helper.API_DOMAIN}/api/douyin/v1/video/video_list/",
                 Headers = new Dictionary<string, string>
                 {
-                    {"access-token",accessToken }
+                    {"access-token",this.AccessToken.AccessToken }
                 },
                 Data = new Dictionary<string, string>
                 {
-                    {"open_id",openId },
+                    {"open_id",this.AccessToken.OpenId },
                     {"cursor",page.ToString() },
                     {"count",limit.ToString() }
                 }
-            }.GetResponseAsync().ConfigureAwait(false);
-            if (result.StatusCode == System.Net.HttpStatusCode.OK)
+            }, async token =>
             {
-                var resultModel = result.Html.JsonToObject<ResultModel<VideoModel>>();
-
-                return resultModel.Data;
-            }
-            else
-                return await Task.FromResult(new VideoModel(Enum.AccessTokenErrorCode.SYSTEM_ERROR, "接口请求不通"));
+                return await this.GetVideoListAsync(accessToken, openId, page, limit).ConfigureAwait(false);
+            });
         }
         #endregion
 
@@ -467,11 +426,10 @@ namespace XiaoFeng.DouYin
         /// <returns></returns>
         public async Task<VideoModel> GetVideoDataAsync(string accessToken, string openId, string itemIds, string videoIds)
         {
-            var url = "/api/douyin/v1/video/video_data/?open_id=" + openId;
-            var result = await new HttpRequest
+            return await ExecuteAccessTokenAsync(new HttpRequest
             {
                 Method = HttpMethod.Post,
-                Address = Helper.API_DOMAIN + url,
+                Address = $"{Helper.API_DOMAIN}/api/douyin/v1/video/video_data/?open_id={openId}",
                 ContentType = "application/json",
                 Headers = new Dictionary<string, string>
                 {
@@ -482,15 +440,10 @@ namespace XiaoFeng.DouYin
                     item_ids = itemIds,
                     video_ids = videoIds
                 }.ToJson()
-            }.GetResponseAsync().ConfigureAwait(false);
-            if (result.StatusCode == System.Net.HttpStatusCode.OK)
+            }, async token =>
             {
-                var resultModel = result.Html.JsonToObject<ResultModel<VideoModel>>();
-
-                return resultModel.Data;
-            }
-            else
-                return await Task.FromResult(new VideoModel(Enum.AccessTokenErrorCode.SYSTEM_ERROR, "接口请求不通"));
+                return await this.GetVideoDataAsync(token.AccessToken, token.OpenId, itemIds, videoIds).ConfigureAwait(false);
+            });
         }
         #endregion
 
@@ -506,32 +459,18 @@ namespace XiaoFeng.DouYin
         /// <returns></returns>
         public async Task<ShareModel> GetShareIdAsync(string clientToken, Boolean needCallback = true, string sourceStyleId = "", string defaultHashTag = "", string linkParam = "")
         {
-            var url = $"/share-id/?need_callback={needCallback.ToString().ToLower()}&source_style_id={sourceStyleId}&default_hashtag={defaultHashTag}&link_param={linkParam}";
-            var result = await new HttpRequest
+            return await this.ExecuteClientTokenAsync(new HttpRequest
             {
                 Method = HttpMethod.Get,
-                Address = Helper.API_DOMAIN + url,
+                Address = $"{Helper.API_DOMAIN}/share-id/?need_callback={needCallback.ToString().ToLower()}&source_style_id={sourceStyleId}&default_hashtag={defaultHashTag}&link_param={linkParam}",
                 Headers = new Dictionary<string, string>
                 {
                     {"access-token",clientToken }
                 }
-            }.GetResponseAsync().ConfigureAwait(false);
-            if (result.StatusCode == System.Net.HttpStatusCode.OK)
+            }, async token =>
             {
-                var resultModel = result.Html.JsonToObject<ResultModel<ShareModel>>();
-                if (resultModel.Data.ErrorCode == AccessTokenErrorCode.ACCESSTOKEN_EXPIERD)
-                {
-                    var client = await this.CreateClientTokenAsync().ConfigureAwait(false);
-                    if (client.ErrorCode == AccessTokenErrorCode.SUCCESS)
-                    {
-                        this.ClientToken = client;
-                        return await this.GetShareIdAsync(client.AccessToken, needCallback, sourceStyleId, defaultHashTag, linkParam).ConfigureAwait(false);
-                    }
-                }
-                return resultModel.Data;
-            }
-            else
-                return await Task.FromResult(new ShareModel(Enum.AccessTokenErrorCode.SYSTEM_ERROR, "接口请求不通"));
+                return await this.GetShareIdAsync(token.AccessToken, needCallback, sourceStyleId, defaultHashTag, linkParam).ConfigureAwait(false);
+            });
         }
         #endregion
 
@@ -547,11 +486,10 @@ namespace XiaoFeng.DouYin
         /// <returns></returns>
         public async Task<PoiModel> GetPoiAsync(string clientToken, string keyword, string city, int page, int limit)
         {
-            var url = "/poi/search/keyword/";
-            var result = await new HttpRequest
+            return await this.ExecuteClientTokenAsync(new HttpRequest
             {
                 Method = HttpMethod.Get,
-                Address = Helper.API_DOMAIN + url,
+                Address = $"{Helper.API_DOMAIN}/poi/search/keyword/",
                 ContentType = "application/json",
                 Headers = new Dictionary<string, string>
                 {
@@ -564,15 +502,10 @@ namespace XiaoFeng.DouYin
                     {"keyword",keyword },
                     {"city",city }
                 }
-            }.GetResponseAsync().ConfigureAwait(false);
-            if (result.StatusCode == System.Net.HttpStatusCode.OK)
+            }, async token =>
             {
-                var resultModel = result.Html.JsonToObject<ResultModel<PoiModel>>();
-
-                return resultModel.Data;
-            }
-            else
-                return await Task.FromResult(new PoiModel(Enum.AccessTokenErrorCode.SYSTEM_ERROR, "接口请求不通"));
+                return await this.GetPoiAsync(token.AccessToken, keyword, city, page, limit).ConfigureAwait(false);
+            });
         }
         #endregion
 
@@ -645,31 +578,18 @@ namespace XiaoFeng.DouYin
         /// <returns></returns>
         public async Task<UserItemModel> GetUserItemAsync(string accessToken, string openId, int days)
         {
-            var url = $"/data/external/user/item/?open_id={openId}&date_type={days}";
-            var result = await new HttpRequest
+            return await this.ExecuteAccessTokenAsync(new HttpRequest
             {
                 Method = HttpMethod.Get,
-                Address = Helper.API_DOMAIN + url,
+                Address = $"{Helper.API_DOMAIN}/data/external/user/item/?open_id={openId}&date_type={days}",
                 Headers = new Dictionary<string, string>
                 {
                     {"access-token",accessToken }
                 }
-            }.GetResponseAsync().ConfigureAwait(false);
-            if (result.StatusCode == System.Net.HttpStatusCode.OK)
+            }, async token =>
             {
-                var resultModel = result.Html.JsonToObject<ResultModel<UserItemModel>>();
-                if (resultModel.Data.ErrorCode == AccessTokenErrorCode.ACCESSTOKEN_EXPIERD)
-                {
-                    var refreshToken = await this.RefreshAccessTokenAsync(this.AccessToken.RefreshToken).ConfigureAwait(false);
-                    if (refreshToken.ErrorCode == AccessTokenErrorCode.SUCCESS)
-                    {
-                        return await this.GetUserItemAsync(refreshToken.AccessToken, refreshToken.OpenId, days).ConfigureAwait(false);
-                    }
-                }
-                return resultModel.Data;
-            }
-            else
-                return await Task.FromResult(new UserItemModel(Enum.AccessTokenErrorCode.SYSTEM_ERROR, "接口请求不通"));
+                return await this.GetUserItemAsync(token.AccessToken, token.OpenId, days).ConfigureAwait(false);
+            });
         }
         #endregion
 
@@ -683,31 +603,18 @@ namespace XiaoFeng.DouYin
         /// <returns></returns>
         public async Task<UserFansModel> GetUserFansAsync(string accessToken, string openId, int days)
         {
-            var url = $"/data/external/user/fans/?open_id={openId}&date_type={days}";
-            var result = await new HttpRequest
+            return await this.ExecuteAccessTokenAsync(new HttpRequest
             {
                 Method = HttpMethod.Get,
-                Address = Helper.API_DOMAIN + url,
+                Address = $"{Helper.API_DOMAIN}/data/external/user/fans/?open_id={openId}&date_type={days}",
                 Headers = new Dictionary<string, string>
                 {
                     {"access-token",accessToken }
                 }
-            }.GetResponseAsync().ConfigureAwait(false);
-            if (result.StatusCode == System.Net.HttpStatusCode.OK)
+            }, async token =>
             {
-                var resultModel = result.Html.JsonToObject<ResultModel<UserFansModel>>();
-                if (resultModel.Data.ErrorCode == AccessTokenErrorCode.ACCESSTOKEN_EXPIERD)
-                {
-                    var refreshToken = await this.RefreshAccessTokenAsync(this.AccessToken.RefreshToken).ConfigureAwait(false);
-                    if (refreshToken.ErrorCode == AccessTokenErrorCode.SUCCESS)
-                    {
-                        return await this.GetUserFansAsync(refreshToken.AccessToken, refreshToken.OpenId, days).ConfigureAwait(false);
-                    }
-                }
-                return resultModel.Data;
-            }
-            else
-                return await Task.FromResult(new UserFansModel(Enum.AccessTokenErrorCode.SYSTEM_ERROR, "接口请求不通"));
+                return await this.GetUserFansAsync(token.AccessToken, token.OpenId, days).ConfigureAwait(false);
+            });
         }
         #endregion
 
@@ -721,31 +628,18 @@ namespace XiaoFeng.DouYin
         /// <returns></returns>
         public async Task<UserLikeModel> GetUserLikeAsync(string accessToken, string openId, int days)
         {
-            var url = $"/data/external/user/like/?open_id={openId}&date_type={days}";
-            var result = await new HttpRequest
+            return await this.ExecuteAccessTokenAsync(new HttpRequest
             {
                 Method = HttpMethod.Get,
-                Address = Helper.API_DOMAIN + url,
+                Address = $"{Helper.API_DOMAIN}/data/external/user/like/?open_id={openId}&date_type={days}",
                 Headers = new Dictionary<string, string>
                 {
                     {"access-token",accessToken }
                 }
-            }.GetResponseAsync().ConfigureAwait(false);
-            if (result.StatusCode == System.Net.HttpStatusCode.OK)
+            }, async token =>
             {
-                var resultModel = result.Html.JsonToObject<ResultModel<UserLikeModel>>();
-                if (resultModel.Data.ErrorCode == AccessTokenErrorCode.ACCESSTOKEN_EXPIERD)
-                {
-                    var refreshToken = await this.RefreshAccessTokenAsync(this.AccessToken.RefreshToken).ConfigureAwait(false);
-                    if (refreshToken.ErrorCode == AccessTokenErrorCode.SUCCESS)
-                    {
-                        return await this.GetUserLikeAsync(refreshToken.AccessToken, refreshToken.OpenId, days).ConfigureAwait(false);
-                    }
-                }
-                return resultModel.Data;
-            }
-            else
-                return await Task.FromResult(new UserLikeModel(Enum.AccessTokenErrorCode.SYSTEM_ERROR, "接口请求不通"));
+                return await this.GetUserLikeAsync(token.AccessToken, token.OpenId, days).ConfigureAwait(false);
+            });
         }
         #endregion
 
@@ -759,31 +653,18 @@ namespace XiaoFeng.DouYin
         /// <returns></returns>
         public async Task<UserCommentModel> GetUserCommentAsync(string accessToken, string openId, int days)
         {
-            var url = $"/data/external/user/comment/?open_id={openId}&date_type={days}";
-            var result = await new HttpRequest
+            return await this.ExecuteAccessTokenAsync(new HttpRequest
             {
                 Method = HttpMethod.Get,
-                Address = Helper.API_DOMAIN + url,
+                Address = $"{Helper.API_DOMAIN}/data/external/user/comment/?open_id={openId}&date_type={days}",
                 Headers = new Dictionary<string, string>
                 {
                     {"access-token",accessToken }
                 }
-            }.GetResponseAsync().ConfigureAwait(false);
-            if (result.StatusCode == System.Net.HttpStatusCode.OK)
+            }, async token =>
             {
-                var resultModel = result.Html.JsonToObject<ResultModel<UserCommentModel>>();
-                if (resultModel.Data.ErrorCode == AccessTokenErrorCode.ACCESSTOKEN_EXPIERD)
-                {
-                    var refreshToken = await this.RefreshAccessTokenAsync(this.AccessToken.RefreshToken).ConfigureAwait(false);
-                    if (refreshToken.ErrorCode == AccessTokenErrorCode.SUCCESS)
-                    {
-                        return await this.GetUserCommentAsync(refreshToken.AccessToken, refreshToken.OpenId, days).ConfigureAwait(false);
-                    }
-                }
-                return resultModel.Data;
-            }
-            else
-                return await Task.FromResult(new UserCommentModel(Enum.AccessTokenErrorCode.SYSTEM_ERROR, "接口请求不通"));
+                return await this.GetUserCommentAsync(token.AccessToken, token.OpenId, days).ConfigureAwait(false);
+            });
         }
         #endregion
 
@@ -797,31 +678,18 @@ namespace XiaoFeng.DouYin
         /// <returns></returns>
         public async Task<UserShareModel> GetUserShareAsync(string accessToken, string openId, int days)
         {
-            var url = $"/data/external/user/share/?open_id={openId}&date_type={days}";
-            var result = await new HttpRequest
+            return await this.ExecuteAccessTokenAsync(new HttpRequest
             {
                 Method = HttpMethod.Get,
-                Address = Helper.API_DOMAIN + url,
+                Address = $"{Helper.API_DOMAIN}/data/external/user/share/?open_id={openId}&date_type={days}",
                 Headers = new Dictionary<string, string>
                 {
                     {"access-token",accessToken }
                 }
-            }.GetResponseAsync().ConfigureAwait(false);
-            if (result.StatusCode == System.Net.HttpStatusCode.OK)
+            }, async token =>
             {
-                var resultModel = result.Html.JsonToObject<ResultModel<UserShareModel>>();
-                if (resultModel.Data.ErrorCode == AccessTokenErrorCode.ACCESSTOKEN_EXPIERD)
-                {
-                    var refreshToken = await this.RefreshAccessTokenAsync(this.AccessToken.RefreshToken).ConfigureAwait(false);
-                    if (refreshToken.ErrorCode == AccessTokenErrorCode.SUCCESS)
-                    {
-                        return await this.GetUserShareAsync(refreshToken.AccessToken, refreshToken.OpenId, days).ConfigureAwait(false);
-                    }
-                }
-                return resultModel.Data;
-            }
-            else
-                return await Task.FromResult(new UserShareModel(Enum.AccessTokenErrorCode.SYSTEM_ERROR, "接口请求不通"));
+                return await this.GetUserShareAsync(token.AccessToken, token.OpenId, days).ConfigureAwait(false);
+            });
         }
         #endregion
 
@@ -835,31 +703,18 @@ namespace XiaoFeng.DouYin
         /// <returns></returns>
         public async Task<UserProfileModel> GetUserProfileAsync(string accessToken, string openId, int days)
         {
-            var url = $"/data/external/user/profile/?open_id={openId}&date_type={days}";
-            var result = await new HttpRequest
+            return await this.ExecuteAccessTokenAsync(new HttpRequest
             {
                 Method = HttpMethod.Get,
-                Address = Helper.API_DOMAIN + url,
+                Address = $"{Helper.API_DOMAIN}/data/external/user/profile/?open_id={openId}&date_type={days}",
                 Headers = new Dictionary<string, string>
                 {
                     {"access-token",accessToken }
                 }
-            }.GetResponseAsync().ConfigureAwait(false);
-            if (result.StatusCode == System.Net.HttpStatusCode.OK)
+            }, async token =>
             {
-                var resultModel = result.Html.JsonToObject<ResultModel<UserProfileModel>>();
-                if (resultModel.Data.ErrorCode == AccessTokenErrorCode.ACCESSTOKEN_EXPIERD)
-                {
-                    var refreshToken = await this.RefreshAccessTokenAsync(this.AccessToken.RefreshToken).ConfigureAwait(false);
-                    if (refreshToken.ErrorCode == AccessTokenErrorCode.SUCCESS)
-                    {
-                        return await this.GetUserProfileAsync(refreshToken.AccessToken, refreshToken.OpenId, days).ConfigureAwait(false);
-                    }
-                }
-                return resultModel.Data;
-            }
-            else
-                return await Task.FromResult(new UserProfileModel(Enum.AccessTokenErrorCode.SYSTEM_ERROR, "接口请求不通"));
+                return await this.GetUserProfileAsync(token.AccessToken, token.OpenId, days).ConfigureAwait(false);
+            });
         }
         #endregion
 
@@ -877,31 +732,18 @@ namespace XiaoFeng.DouYin
         /// <returns></returns>
         public async Task<ItemBaseModel> GetItemBaseAsync(string accessToken, string openId, string itemId)
         {
-            var url = $"/data/external/item/base/?open_id={openId}&item_id={itemId.UrlEncode()}";
-            var result = await new HttpRequest
+            return await this.ExecuteAccessTokenAsync(new HttpRequest
             {
                 Method = HttpMethod.Get,
-                Address = Helper.API_DOMAIN + url,
+                Address = $"{Helper.API_DOMAIN}/data/external/item/base/?open_id={openId}&item_id={itemId.UrlEncode()}",
                 Headers = new Dictionary<string, string>
                 {
                     {"access-token",accessToken }
                 }
-            }.GetResponseAsync().ConfigureAwait(false);
-            if (result.StatusCode == System.Net.HttpStatusCode.OK)
+            }, async token =>
             {
-                var resultModel = result.Html.JsonToObject<ResultModel<ItemBaseModel>>();
-                if (resultModel.Data.ErrorCode == AccessTokenErrorCode.ACCESSTOKEN_EXPIERD)
-                {
-                    var refreshToken = await this.RefreshAccessTokenAsync(this.AccessToken.RefreshToken).ConfigureAwait(false);
-                    if (refreshToken.ErrorCode == AccessTokenErrorCode.SUCCESS)
-                    {
-                        return await this.GetItemBaseAsync(refreshToken.AccessToken, refreshToken.OpenId, itemId).ConfigureAwait(false);
-                    }
-                }
-                return resultModel.Data;
-            }
-            else
-                return await Task.FromResult(new ItemBaseModel(Enum.AccessTokenErrorCode.SYSTEM_ERROR, "接口请求不通"));
+                return await this.GetItemBaseAsync(token.AccessToken, token.OpenId, itemId).ConfigureAwait(false);
+            });
         }
         #endregion
 
@@ -916,31 +758,18 @@ namespace XiaoFeng.DouYin
         /// <returns></returns>
         public async Task<ItemLikeModel> GetItemLikeAsync(string accessToken, string openId, string itemId, string days)
         {
-            var url = $"/data/external/item/like/?open_id={openId}&item_id={itemId.UrlEncode()}&date_type={days}";
-            var result = await new HttpRequest
+            return await this.ExecuteAccessTokenAsync(new HttpRequest
             {
                 Method = HttpMethod.Get,
-                Address = Helper.API_DOMAIN + url,
+                Address = $"{Helper.API_DOMAIN}/data/external/item/like/?open_id={openId}&item_id={itemId.UrlEncode()}&date_type={days}",
                 Headers = new Dictionary<string, string>
                 {
                     {"access-token",accessToken }
                 }
-            }.GetResponseAsync().ConfigureAwait(false);
-            if (result.StatusCode == System.Net.HttpStatusCode.OK)
+            }, async token =>
             {
-                var resultModel = result.Html.JsonToObject<ResultModel<ItemLikeModel>>();
-                if (resultModel.Data.ErrorCode == AccessTokenErrorCode.ACCESSTOKEN_EXPIERD)
-                {
-                    var refreshToken = await this.RefreshAccessTokenAsync(this.AccessToken.RefreshToken).ConfigureAwait(false);
-                    if (refreshToken.ErrorCode == AccessTokenErrorCode.SUCCESS)
-                    {
-                        return await this.GetItemLikeAsync(refreshToken.AccessToken, refreshToken.OpenId, itemId, days).ConfigureAwait(false);
-                    }
-                }
-                return resultModel.Data;
-            }
-            else
-                return await Task.FromResult(new ItemLikeModel(Enum.AccessTokenErrorCode.SYSTEM_ERROR, "接口请求不通"));
+                return await this.GetItemLikeAsync(token.AccessToken, token.OpenId, itemId, days).ConfigureAwait(false);
+            });
         }
         #endregion
 
@@ -955,31 +784,18 @@ namespace XiaoFeng.DouYin
         /// <returns></returns>
         public async Task<ItemCommentModel> GetItemCommentAsync(string accessToken, string openId, string itemId, string days)
         {
-            var url = $"/data/external/item/comment/?open_id={openId}&item_id={itemId.UrlEncode()}&date_type={days}";
-            var result = await new HttpRequest
+            return await this.ExecuteAccessTokenAsync(new HttpRequest
             {
                 Method = HttpMethod.Get,
-                Address = Helper.API_DOMAIN + url,
+                Address = $"{Helper.API_DOMAIN}/ data/external/item/comment/?open_id={openId}&item_id={itemId.UrlEncode()}&date_type={days}",
                 Headers = new Dictionary<string, string>
                 {
                     {"access-token",accessToken }
                 }
-            }.GetResponseAsync().ConfigureAwait(false);
-            if (result.StatusCode == System.Net.HttpStatusCode.OK)
+            }, async token =>
             {
-                var resultModel = result.Html.JsonToObject<ResultModel<ItemCommentModel>>();
-                if (resultModel.Data.ErrorCode == AccessTokenErrorCode.ACCESSTOKEN_EXPIERD)
-                {
-                    var refreshToken = await this.RefreshAccessTokenAsync(this.AccessToken.RefreshToken).ConfigureAwait(false);
-                    if (refreshToken.ErrorCode == AccessTokenErrorCode.SUCCESS)
-                    {
-                        return await this.GetItemCommentAsync(refreshToken.AccessToken, refreshToken.OpenId, itemId, days).ConfigureAwait(false);
-                    }
-                }
-                return resultModel.Data;
-            }
-            else
-                return await Task.FromResult(new ItemCommentModel(Enum.AccessTokenErrorCode.SYSTEM_ERROR, "接口请求不通"));
+                return await this.GetItemCommentAsync(token.AccessToken, token.OpenId, itemId, days).ConfigureAwait(false);
+            });
         }
         #endregion
 
@@ -994,31 +810,18 @@ namespace XiaoFeng.DouYin
         /// <returns></returns>
         public async Task<ItemPlayModel> GetItemPlayAsync(string accessToken, string openId, string itemId, string days)
         {
-            var url = $"/data/external/item/play/?open_id={openId}&item_id={itemId.UrlEncode()}&date_type={days}";
-            var result = await new HttpRequest
+            return await this.ExecuteAccessTokenAsync(new HttpRequest
             {
                 Method = HttpMethod.Get,
-                Address = Helper.API_DOMAIN + url,
+                Address = $"{Helper.API_DOMAIN}/data/external/item/play/?open_id={openId}&item_id={itemId.UrlEncode()}&date_type={days}",
                 Headers = new Dictionary<string, string>
                 {
                     {"access-token",accessToken }
                 }
-            }.GetResponseAsync().ConfigureAwait(false);
-            if (result.StatusCode == System.Net.HttpStatusCode.OK)
+            }, async token =>
             {
-                var resultModel = result.Html.JsonToObject<ResultModel<ItemPlayModel>>();
-                if (resultModel.Data.ErrorCode == AccessTokenErrorCode.ACCESSTOKEN_EXPIERD)
-                {
-                    var refreshToken = await this.RefreshAccessTokenAsync(this.AccessToken.RefreshToken).ConfigureAwait(false);
-                    if (refreshToken.ErrorCode == AccessTokenErrorCode.SUCCESS)
-                    {
-                        return await this.GetItemPlayAsync(refreshToken.AccessToken, refreshToken.OpenId, itemId, days).ConfigureAwait(false);
-                    }
-                }
-                return resultModel.Data;
-            }
-            else
-                return await Task.FromResult(new ItemPlayModel(Enum.AccessTokenErrorCode.SYSTEM_ERROR, "接口请求不通"));
+                return await this.GetItemPlayAsync(token.AccessToken, token.OpenId, itemId, days).ConfigureAwait(false);
+            });
         }
         #endregion
 
@@ -1033,31 +836,18 @@ namespace XiaoFeng.DouYin
         /// <returns></returns>
         public async Task<ItemShareModel> GetItemShareAsync(string accessToken, string openId, string itemId, string days)
         {
-            var url = $"/data/external/item/share/?open_id={openId}&item_id={itemId.UrlEncode()}&date_type={days}";
-            var result = await new HttpRequest
+            return await this.ExecuteAccessTokenAsync(new HttpRequest
             {
                 Method = HttpMethod.Get,
-                Address = Helper.API_DOMAIN + url,
+                Address = $"{Helper.API_DOMAIN}/data/external/item/share/?open_id={openId}&item_id={itemId.UrlEncode()}&date_type={days}",
                 Headers = new Dictionary<string, string>
                 {
                     {"access-token",accessToken }
                 }
-            }.GetResponseAsync().ConfigureAwait(false);
-            if (result.StatusCode == System.Net.HttpStatusCode.OK)
+            }, async token =>
             {
-                var resultModel = result.Html.JsonToObject<ResultModel<ItemShareModel>>();
-                if (resultModel.Data.ErrorCode == AccessTokenErrorCode.ACCESSTOKEN_EXPIERD)
-                {
-                    var refreshToken = await this.RefreshAccessTokenAsync(this.AccessToken.RefreshToken).ConfigureAwait(false);
-                    if (refreshToken.ErrorCode == AccessTokenErrorCode.SUCCESS)
-                    {
-                        return await this.GetItemShareAsync(refreshToken.AccessToken, refreshToken.OpenId, itemId, days).ConfigureAwait(false);
-                    }
-                }
-                return resultModel.Data;
-            }
-            else
-                return await Task.FromResult(new ItemShareModel(Enum.AccessTokenErrorCode.SYSTEM_ERROR, "接口请求不通"));
+                return await this.GetItemShareAsync(token.AccessToken, token.OpenId, itemId, days).ConfigureAwait(false);
+            });
         }
         #endregion
 
@@ -1073,34 +863,106 @@ namespace XiaoFeng.DouYin
         /// <returns></returns>
         public async Task<HotVideoModel> GetHotVideoRankAsync(string clientToken)
         {
-            var url = $"/data/extern/billboard/hot_video/";
-            var result = await new HttpRequest
+            return await this.ExecuteClientTokenAsync(new HttpRequest
             {
                 Method = HttpMethod.Get,
-                Address = Helper.API_DOMAIN + url,
+                Address = $"{Helper.API_DOMAIN}/data/extern/billboard/hot_video/",
                 Headers = new Dictionary<string, string>
                 {
                     {"access-token",clientToken }
                 }
-            }.GetResponseAsync().ConfigureAwait(false);
-            if (result.StatusCode == System.Net.HttpStatusCode.OK)
+            }, async token =>
             {
-                var resultModel = result.Html.JsonToObject<ResultModel<HotVideoModel>>();
-                if (resultModel.Data.ErrorCode == AccessTokenErrorCode.ACCESSTOKEN_EXPIERD)
+                return await this.GetHotVideoRankAsync(token.AccessToken);
+            });
+        }
+        #endregion
+
+        #endregion
+
+        #endregion
+
+        #region 运行结果
+
+        #region 运行AccessToken结果
+        /// <summary>
+        /// 运行AccessToken结果
+        /// </summary>
+        /// <typeparam name="T">返回类型</typeparam>
+        /// <param name="request">请求对象</param>
+        /// <param name="func">回调方法</param>
+        /// <returns></returns>
+        public async Task<T> ExecuteAccessTokenAsync<T>(IHttpRequest request, Func<AccessTokenModel, Task<T>> func) where T : BaseDataModel
+        {
+            var response = await request.GetResponseAsync();
+            if (response.StatusCode == System.Net.HttpStatusCode.OK)
+            {
+                var data = response.Html.JsonToObject<ResultModel<T>>();
+                if (data.Data.ErrorCode == AccessTokenErrorCode.ACCESS_TOKEN_EXPIRED)
+                {
+                    var client = await this.RefreshAccessTokenAsync(this.AccessToken.RefreshToken).ConfigureAwait(false);
+                    if (client.ErrorCode == AccessTokenErrorCode.SUCCESS)
+                    {
+                        this.AccessToken = client;
+                        this.TokenChange?.Invoke(client, null, null);
+                        return await func.Invoke(client);
+                    }
+                    else if (client.ErrorCode == AccessTokenErrorCode.REFRESH_TOKEN_EXPIRED)
+                    {
+                        var refresh = await this.RefreshRefreshAccessTokenAsync(this.AccessToken.RefreshToken).ConfigureAwait(false);
+                        if (refresh.ErrorCode == AccessTokenErrorCode.SUCCESS)
+                        {
+                            client.RefreshToken = refresh.RefreshToken;
+                            client.RefreshExpiresIn = refresh.ExpiresIn;
+                            await this.RefreshAccessTokenAsync(this.AccessToken.RefreshToken).ConfigureAwait(false);
+                            if (client.ErrorCode == AccessTokenErrorCode.SUCCESS)
+                            {
+                                this.AccessToken = client;
+                                this.TokenChange?.Invoke(client, null, null);
+                                return await func.Invoke(client);
+                            }
+                            else return (T)(client as BaseDataModel);
+                        }
+                        else return (T)(refresh as BaseDataModel);
+                    }
+                    else return (T)(client as BaseDataModel);
+                }
+                return data.Data;
+            }
+            else
+                return await Task.FromResult((T)new BaseDataModel(AccessTokenErrorCode.SYSTEM_ERROR, "接口请求不通"));
+        }
+        #endregion
+
+        #region 运行ClientToken结果
+        /// <summary>
+        /// 运行ClientToken结果
+        /// </summary>
+        /// <typeparam name="T">返回类型</typeparam>
+        /// <param name="request">请求对象</param>
+        /// <param name="func">回调方法</param>
+        /// <returns></returns>
+        public async Task<T> ExecuteClientTokenAsync<T>(IHttpRequest request, Func<ClientTokenModel, Task<T>> func) where T : BaseDataModel
+        {
+            var response = await request.GetResponseAsync();
+            if (response.StatusCode == System.Net.HttpStatusCode.OK)
+            {
+                var data = response.Html.JsonToObject<ResultModel<T>>();
+                if (data.Data.ErrorCode == AccessTokenErrorCode.ACCESSTOKEN_EXPIERD)
                 {
                     var client = await this.CreateClientTokenAsync().ConfigureAwait(false);
                     if (client.ErrorCode == AccessTokenErrorCode.SUCCESS)
                     {
-                        return await this.GetHotVideoRankAsync(client.AccessToken).ConfigureAwait(false);
+                        this.ClientToken = client;
+                        this.TokenChange?.Invoke(null, client, null);
+                        return await func.Invoke(client);
                     }
                 }
-                return resultModel.Data;
+                return data.Data;
             }
             else
-                return await Task.FromResult(new HotVideoModel(Enum.AccessTokenErrorCode.SYSTEM_ERROR, "接口请求不通"));
+                return await Task.FromResult((T)new BaseDataModel(AccessTokenErrorCode.SYSTEM_ERROR, "接口请求不通"));
         }
-        #endregion
-
         #endregion
 
         #endregion

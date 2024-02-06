@@ -16,36 +16,6 @@ using XiaoFeng.Json;
 *****************************************************************/
 namespace XiaoFeng.DouYin.Model
 {
-    /*
-     * 正确的
-{
-    "data": {
-        "access_token": "act.f7094fbffab2ecbfc45e9af9c32bc241oYdckvBKe82BPx8T******",
-        "captcha": "",
-        "desc_url": "",
-        "description": "",
-        "error_code": 0,
-        "expires_in": 1296000,
-        "log_id": "20230525105733ED3ED7AC56A******",
-        "open_id": "b9b71865-7fea-44cc-******",
-        "refresh_expires_in": 2592000,
-        "refresh_token": "rft.713900b74edde9f30ec4e246b706da30t******",
-        "scope": "user_info"
-    },
-    "message": "success"
-}
-    错误的
- {
-  "data": {
-    "description": "Parameter error",
-    "error_code": 2100005
-  },
-  "extra": {
-    "logid": "2020070614111601022506808001045D59",
-    "now": 1594015876138
-  }
-}
-     */
     /// <summary>
     /// AccessToken 模型
     /// </summary>

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using XiaoFeng.DouYin.Enum;
 using XiaoFeng.Json;
 
 /****************************************************************
@@ -10,44 +9,38 @@ using XiaoFeng.Json;
 *  QQ : 7092734                                                 *
 *  Email : jacky@eelf.cn                                        *
 *  Site : www.eelf.cn                                           *
-*  Create Time : 2024-02-01 21:11:14                            *
+*  Create Time : 2024-02-06 21:38:47                            *
 *  Version : v 1.0.0                                            *
 *  CLR Version : 4.0.30319.42000                                *
 *****************************************************************/
 namespace XiaoFeng.DouYin.Model
 {
     /// <summary>
-    /// 票据 类说明
+    /// 粉丝验证模型
     /// </summary>
-    public class TicketModel : BaseDataModel
+    public class FansCheckModel:BaseDataModel
     {
         #region 构造器
         /// <summary>
         /// 无参构造器
         /// </summary>
-        public TicketModel()
+        public FansCheckModel()
         {
 
         }
-        /// <summary>
-        /// 初始化一个新的实例
-        /// </summary>
-        /// <param name="errorCode">错误码</param>
-        /// <param name="description">错误码描述</param>
-        public TicketModel(AccessTokenErrorCode errorCode, string description) : base(errorCode, description) { }
         #endregion
 
         #region 属性
         /// <summary>
-        /// 过期时间
+        /// 是否关注
         /// </summary>
-        [JsonElement("expires_in")]
-        public long ExpiresIn { get; set; }
+        [JsonElement("is_follower")]
+        public Boolean IsFollower { get; set; }
         /// <summary>
-        /// 票据
+        /// 关注时间
         /// </summary>
-        [JsonElement("ticket")]
-        public string Ticket { get; set; }
+        [JsonElement("follow_time")]
+        public long FollowerTime { get; set; }
         #endregion
 
         #region 方法
