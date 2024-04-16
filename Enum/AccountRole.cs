@@ -16,7 +16,7 @@ using System.Text;
 namespace XiaoFeng.DouYin.Enum
 {
     /// <summary>
-    /// 帐号类型
+    /// 账号类型
     /// </summary>
     public enum AccountRole
     {

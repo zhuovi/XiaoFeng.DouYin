@@ -383,9 +383,9 @@ namespace XiaoFeng.DouYin
 
         #region 查询视频
 
-        #region 查询授权帐号视频列表
+        #region 查询授权账号视频列表
         /// <summary>
-        /// 查询授权帐号视频列表
+        /// 查询授权账号视频列表
         /// </summary>
         /// <param name="accessToken">accessToken</param>
         /// <param name="openId">openid</param>

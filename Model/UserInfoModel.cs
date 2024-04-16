@@ -21,7 +21,7 @@ namespace XiaoFeng.DouYin.Model
     /// <summary>
     /// UserInfoModel 类说明
     /// </summary>
-    public class UserInfoModel:BaseDataModel
+    public class UserInfoModel : BaseDataModel
     {
         #region 构造器
         /// <summary>
@@ -50,7 +50,7 @@ namespace XiaoFeng.DouYin.Model
         [JsonElement("open_id")]
         public string OpenId { get; set; }
         /// <summary>
-        /// 帐号类型
+        /// 账号类型
         /// </summary>
         [JsonElement("e_account_role")]
         public AccountRole AccountRole { get; set; }
